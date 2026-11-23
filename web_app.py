@@ -24,6 +24,7 @@ sys.path.append(str(SRC_DIR))
 rag_module = import_module("09_full_rag_pipeline")
 predict_module = import_module("13_predict_uploaded_image")
 gradcam_module = import_module("15_gradcam_uploaded_image")
+district_module = import_module("district_context")
 # backbone_module = import_module("16_backbone_comparison_web")
 
 AgriculturalRAG = rag_module.AgriculturalRAG
@@ -44,6 +45,8 @@ app.mount(
 templates = Jinja2Templates(directory=str(WEB_DIR / "templates"))
 
 rag = AgriculturalRAG(KB_PATH)
+
+DISTRICTS = district_module.list_districts()
 
 
 def save_upload(upload: UploadFile) -> Path:
@@ -72,6 +75,7 @@ def render_page(
     prediction=None,
     gradcam=None,
     # backbone=None,
+    selected_district="",
 ):
     return templates.TemplateResponse(
         request,
@@ -83,6 +87,8 @@ def render_page(
             "prediction": prediction,
             "gradcam": gradcam,
             # "backbone": backbone,
+            "districts": DISTRICTS,
+            "selected_district": selected_district,
         },
     )
 
@@ -97,6 +103,7 @@ def advisory(
     request: Request,
     query: str = Form(...),
     top_k: int = Form(5),
+    district: str = Form(""),
 ):
     query = query.strip()
 
@@ -107,11 +114,17 @@ def advisory(
         )
 
     try:
-        result = rag.generate_advisory(query, top_k=top_k)
+        district_text = district_module.build_context_text(district) if district else ""
+        result = rag.generate_advisory(
+            query, top_k=top_k, district_context=district_text
+        )
+        if district_text:
+            result["district_label"] = district_module.get_label(district)
         return render_page(
             request,
             query=query,
-            result=result
+            result=result,
+            selected_district=district
         )
 
     except Exception as e:

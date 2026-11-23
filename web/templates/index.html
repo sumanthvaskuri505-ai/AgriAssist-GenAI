@@ -141,6 +141,14 @@
                         placeholder="Example: tomato leaf curl whitefly management"
                     >
 
+                    <label>District (optional)</label>
+                    <select name="district">
+                        <option value="">No district selected</option>
+                        {% for d in districts %}
+                        <option value="{{ d.code }}" {% if selected_district|string == d.code|string %}selected{% endif %}>{{ d.name }}</option>
+                        {% endfor %}
+                    </select>
+
                     <label>Top-k retrieved documents</label>
                     <select name="top_k">
                         <option value="3">3 documents</option>
@@ -305,6 +313,9 @@
                 <p class="eyebrow dark">Retrieval Query</p>
                 <h2>Query Used for Retrieval</h2>
                 <pre>{{ result.query }}</pre>
+                {% if result.district_label %}
+                <p><strong>District data used:</strong> {{ result.district_label }}. Soil Health Card, crop statistics and NASA POWER figures for this district were given to the AI; their sources and limits are stated in the report.</p>
+                {% endif %}
             </section>
 
             <section class="result-card" id="documents">

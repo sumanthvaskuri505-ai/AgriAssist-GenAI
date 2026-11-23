@@ -40,7 +40,7 @@ def normalize_product(value):
     return value
 
 
-def generate_ai_advisory(user_query, region, retrieved_docs):
+def generate_ai_advisory(user_query, region, retrieved_docs, district_context=""):
     if not retrieved_docs:
         return (
             "# Agricultural Advisory Report\n\n"
@@ -70,6 +70,29 @@ def generate_ai_advisory(user_query, region, retrieved_docs):
         ]
     )
 
+    district_block = ""
+    if district_context:
+        district_block = (
+            "DISTRICT DATA (structured facts for the farmer's district; sources: Soil Health Card, "
+            "Directorate of Economics and Statistics crop statistics, NASA POWER):\n"
+            f"{district_context}\n\n"
+            "Rules for using the district data:\n"
+            "- Treat these figures as the only district-specific facts. Do not invent or change any number.\n"
+            "- Soil figures are the share of tested samples in each class, not measured nutrient amounts "
+            "and not a diagnosis of the farmer's own field. Say that the farmer's own Soil Health Card "
+            "is the authority for their field.\n"
+            "- If a nutrient is marked NO RELIABLE DATA, say there is no reliable district data for it. "
+            "Never treat missing data as sufficient.\n"
+            "- Crop figures are reported district statistics showing what has been grown, not what will "
+            "suit a particular field.\n"
+            "- Weather figures are modelled estimates. If the farmer states different conditions, follow the farmer.\n"
+            "- Do not state any fertiliser quantity or dose, and do not tell the farmer to skip, add or reduce "
+            "a nutrient based on district percentages. Refer the farmer to their own Soil Health Card or "
+            "local agriculture officer for quantities.\n"
+            "- When you quote a district figure, name its source and year or period.\n"
+            "- Use the district data mainly in sections 1, 3, 5 and 7, and do not repeat all of it.\n\n"
+        )
+
     prompt = f"""
 You are AgriAssist, an agricultural decision-support assistant.
 
@@ -81,7 +104,7 @@ User Query:
 Region:
 {region}
 
-Retrieved Evidence:
+{district_block}Retrieved Evidence:
 {evidence_text}
 
 Important instruction:
@@ -361,7 +384,8 @@ class AgriculturalRAG:
 
         return results
 
-    def generate_advisory(self, user_query: str, region: str = "India", top_k: int = 5):
+    def generate_advisory(self, user_query: str, region: str = "India", top_k: int = 5,
+                          district_context: str = ""):
         search_query = f"{user_query} {region} farmer advisory"
         retrieved_docs = self.retrieve(search_query, top_k=top_k)
 
@@ -369,11 +393,13 @@ class AgriculturalRAG:
             user_query=user_query,
             region=region,
             retrieved_docs=retrieved_docs,
+            district_context=district_context,
         )
 
         return {
             "query": search_query,
             "retrieved_documents": retrieved_docs,
+            "district_context_used": bool(district_context),
             "generated_advisory": final_advisory,
             "safety_note": "AI-generated agricultural recommendations should be verified with local agricultural experts.",
         }
